@@ -23,8 +23,11 @@ from tqdm import tqdm
 from ujson import load as json_load
 from util import collate_fn, SQuAD
 
+MODEL_STR = 'no_gradient_difference'
 
 def main(args):
+    results_file = open(MODEL_STR + '.txt', 'a')
+
     # Set up logging and devices
     args.save_dir = util.get_save_dir(args.save_dir, args.name, training=True)
     log = util.get_logger(args.save_dir, args.name)
@@ -142,6 +145,10 @@ def main(args):
                     # Log to console
                     results_str = ', '.join(f'{k}: {v:05.2f}' for k, v in results.items())
                     log.info(f'Dev {results_str}')
+		    
+                    # Print to file
+                    results_file.write(results_str)
+                    results_file.write('\n')
 
                     # Log to TensorBoard
                     log.info('Visualizing in TensorBoard...')
@@ -153,6 +160,7 @@ def main(args):
                                    step=step,
                                    split='dev',
                                    num_visuals=args.num_visuals)
+    results_file.close()
 
 
 def evaluate(model, data_loader, device, eval_file, max_len, use_squad_v2):
