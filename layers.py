@@ -23,10 +23,20 @@ class Embedding(nn.Module):
         hidden_size (int): Size of hidden activations.
         drop_prob (float): Probability of zero-ing out activations
     """
+
     def __init__(self, word_vectors, hidden_size, drop_prob):
+        def printgradnorm(self, grad_input, grad_output):
+            # print('grad_input size:', grad_input[0].size())
+            # print('grad_output size:', grad_output[0].size())
+            # print('grad_input norm:', grad_input[0].norm())
+            # print('grad_output norm:', grad_output[0].norm())
+            return tuple([grad_input[0] * 10])
+
+
         super(Embedding, self).__init__()
         self.drop_prob = drop_prob
-        self.embed = nn.Embedding.from_pretrained(word_vectors)
+        self.embed = nn.Embedding.from_pretrained(word_vectors, freeze=False)
+        self.embed.register_backward_hook(printgradnorm)
         self.proj = nn.Linear(word_vectors.size(1), hidden_size, bias=False)
         self.hwy = HighwayEncoder(2, hidden_size)
 

@@ -113,7 +113,12 @@ def main(args):
 
                 # Backward
                 loss.backward()
+                # for p in model.parameters():
+                #     if p.grad.size() == (88749, 300):
+                #         print(p.grad.norm())
+
                 nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+
                 optimizer.step()
                 scheduler.step(step // batch_size)
                 ema(model, step // batch_size)
