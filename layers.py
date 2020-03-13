@@ -25,18 +25,41 @@ class Embedding(nn.Module):
     """
 
     def __init__(self, word_vectors, hidden_size, drop_prob):
-        def printgradnorm(self, grad_input, grad_output):
-            # print('grad_input size:', grad_input[0].size())
-            # print('grad_output size:', grad_output[0].size())
-            # print('grad_input norm:', grad_input[0].norm())
-            # print('grad_output norm:', grad_output[0].norm())
-            return tuple([grad_input[0] * 10])
+        def replace_collateral_gradient(self, grad_input, grad_output):
+            eps = 0.0000001
+            THRESHOLD = 0.5
+            embeddings = self.weight
 
+            embeddings_norm_factor = torch.unsqueeze(torch.norm(embeddings, dim=1), 1) # (V)
+            original_embed_grad = grad_input[0]
+
+            # find nonzero row indices
+            sums = torch.sum(original_embed_grad, dim=1)
+            row_numbers = torch.nonzero(sums).squeeze()
+
+            # get corresponding embeddings, and calculate similarity matrix
+            embeddings_with_grad = embeddings[row_numbers].t()  # (300, k)
+            similarities = torch.mm(embeddings, embeddings_with_grad) # (V, k)
+
+            # normalize similarities
+            embeddings_with_grad_norm = torch.unsqueeze(torch.norm(embeddings_with_grad, dim=0), 0) # (1, k)
+            similarities = (similarities / (embeddings_norm_factor + eps)) / (embeddings_with_grad_norm + eps) # (V, k)
+
+            # remove same embeddings
+            for i, row in enumerate(row_numbers):
+                similarities[row, i] = 0
+
+            # new collateral grad algorithm faster
+            new_grad = original_embed_grad.clone().detach()
+            thresholded_similarities = torch.where(similarities > THRESHOLD, similarities, torch.zeros(similarities.size()))
+            gradient_addition = torch.mm(thresholded_similarities, original_embed_grad[row_numbers])
+            new_grad += gradient_addition
+            return tuple([new_grad])
 
         super(Embedding, self).__init__()
         self.drop_prob = drop_prob
         self.embed = nn.Embedding.from_pretrained(word_vectors, freeze=False)
-        self.embed.register_backward_hook(printgradnorm)
+        self.embed.register_backward_hook(replace_collateral_gradient)
         self.proj = nn.Linear(word_vectors.size(1), hidden_size, bias=False)
         self.hwy = HighwayEncoder(2, hidden_size)
 

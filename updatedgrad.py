@@ -34,17 +34,16 @@ args = get_setup_args()
 # n_to_compare
 
 eps = 0.0000001
-THRESHOLD = 0.5
+THRESHOLD = 0.6
 
 word_embeddings_path = './data/word_emb.json'
 fh = open(word_embeddings_path, 'r')
 embeddings = torch.Tensor(json.load(fh)) # (V, 300)
-embeddings_norm_factor = torch.unsqueeze(torch.norm(embeddings, dim=1), 1) # (V)
 
 start = time.time()
+embeddings_norm_factor = torch.unsqueeze(torch.norm(embeddings, dim=1), 1) # (V)
 
 example_gradient = torch.load('grad_example.pt')[0] # (V, 300)
-n_vocab, n_embedding = example_gradient.size()
 
 # find nonzero row indices
 sums = torch.sum(example_gradient, dim=1)
@@ -62,18 +61,11 @@ similarities = (similarities / (embeddings_norm_factor + eps)) / (embeddings_wit
 for i, row in enumerate(row_numbers):
     similarities[row, i] = 0
 
-# new grad algorithm faster
+# new collateral grad algorithm faster
 new_grad = example_gradient.clone().detach()
 thresholded_similarities = torch.where(similarities > THRESHOLD, similarities, torch.zeros(similarities.size()))
 gradient_addition = torch.mm(thresholded_similarities, example_gradient[row_numbers])
 new_grad += gradient_addition
-
-print(torch.norm(new_grad_n))
-print(torch.norm(new_grad))
-print(torch.equal(new_grad_n, new_grad))
-
-    
-
 
 # get one sample
 # N_SAMPLE = 993
@@ -92,7 +84,7 @@ end = time.time()
 print('Time', end - start)
 
 fh.close()
-word2idx_file.close()
+# word2idx_file.close()
 
     # start = time.time()
     # target_embedding = torch.unsqueeze(embeddings[index], -1)
