@@ -29,6 +29,7 @@ class Embedding(nn.Module):
             eps = 0.0000001
             THRESHOLD = 0.5
             embeddings = self.weight
+            
 
             embeddings_norm_factor = torch.unsqueeze(torch.norm(embeddings, dim=1), 1) # (V)
             original_embed_grad = grad_input[0]
@@ -51,7 +52,7 @@ class Embedding(nn.Module):
 
             # new collateral grad algorithm faster
             new_grad = original_embed_grad.clone().detach()
-            thresholded_similarities = torch.where(similarities > THRESHOLD, similarities, torch.zeros(similarities.size()))
+            thresholded_similarities = torch.where(similarities > THRESHOLD, similarities, torch.zeros(similarities.size(), device=torch.device("cuda:0")))
             gradient_addition = torch.mm(thresholded_similarities, original_embed_grad[row_numbers])
             new_grad += gradient_addition
             return tuple([new_grad])
